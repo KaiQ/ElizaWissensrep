@@ -41,7 +41,7 @@ random_response(R, RL) :- length(RL, Len), X is random(Len), nth0(X, RL, R).
 
 % 3. eliza
     % recursion start
-eliza :- read_sentence(Input), eliza_main(Input), !.
+eliza :- init_state, read_sentence(Input), eliza_main(Input), !.
 
     % recusion end, exit eliza
 eliza_main([X]) :- poweroff(X), reply(['Goodbye. I hope I have helped you.']).
@@ -57,6 +57,7 @@ eliza_main(Input) :-
   random_response(Response, ResponseList),      % choose one of the Responses from the ResponseList      
   match(Response, Dictionary, Output),          % write the according Response to Output, 'slots' will be replaced be tokens from the dictionary
   reply(Output),                                % write the determined answer to the terminal
+  state_transition(Output), 
   read_sentence(Input1),                        % read a new input and recurse
   eliza_main(Input1).
 
@@ -89,6 +90,32 @@ add_memory(X, Predicate, Y) :-
   Fact =.. [Predicate, X, Y],                       % runtime evaluation: converts [Predicate, X, Y] into a rule: rule(X,Y) with 'rule' being the content of PRedicate
   asserta(Fact).                                    % save fact to the current knowledge-base            
 
+% we simulate a state machine here by dynamically adding/replacing a state-predicate and its associated information
+reset_state :-
+    abolish(state/1),
+    asserta(state('norm')).
+
+family_state :-
+    abolish(state/1),
+    asserta(state('family')).
+
+feelings_state :-
+    abolish(state/1),
+    asserta(state('feelings')).
+
+init_state :-
+    asserta(state('norm')).
+
+% we check eliza's answer here and change into the according state
+% Note: we cannot do the state-transitions within the pattern-clauses, as all of them will be executed everytime
+%       we'd change states all the time...
+state_transition(Response) :-
+    (subset(['Does', anyone, else, in, your, family, like], Response), family_state); 
+    (subset(['Do', 'you', 'often', 'feel', 'that', 'way','?'],Response), feelings_state); 
+    (subset(['Who', 'is', 'it', '?'],Response), reset_state); 
+    (subset(['When', 'exactly', 'do', 'you', 'feel', 'that', 'way','?'],Response), reset_state); 
+    true.   % do always return true so we do not disturb the program flow
+
 % all the stimulus<->response pairs: pattern(Stimulus,Response). Integers indicate free slots.
 % as Variables always start with a capital letter we have to explicitely define capital words as string literals.
 pattern([i, am, 1], [['How', long, have, you, been, 1, '?'], ['Test', satz, mit, 1, '!']]).
@@ -96,11 +123,13 @@ pattern([1, you, 2, me], [['What', makes, you, think, 'I', 2, you, '?']]).
 pattern([i, like, 1], [['Does', anyone, else, in, your, family, like, 1, '?']]).
 pattern([i, feel, 1], [['Do', you, often, feel, that, way, '?']]).
 pattern([1, X, 2], [['Please', tell, me, more, about, X, '.']]) :- important(X).
-%pattern([remember, X, Predicate, Y], ['I', will, remember, that, '.']) :-
+pattern([yes], [['Who', 'is', 'it', '?']]) :- state(X), X=='family'.                                        % response only this way, when in family state
+pattern([yes], [['When', 'exactly', 'do', 'you', 'feel', 'that', 'way','?']]) :- state(X), X=='feelings'.   % response only this way, when in feelings state
+pattern([1], [['Please', go, on, '.'], ['weiter', 'bitte']]) :- reset_state.    % reset the state if any unkown answer occurs (a kind of fallback...)
+%pattern([remember, X, Predicate, Y], [['I', will, remember, that, '.']]) :-
 % add_memory(X, Predicate, Y).
 %pattern([X, be], [['Is', that, because, X, be, Y, '?']]) :-
 %  call(be, X, Y).
-pattern([1], [['Please', go, on, '.'], ['weiter', 'bitte']]).
 
 % keywords to react to
 important(father).
