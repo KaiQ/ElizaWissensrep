@@ -131,7 +131,7 @@ pattern([i, feel, 1], [['Do', you, often, feel, that, way, '?'],
 pattern([1, X, 2], [['Please', tell, me, more, about, X, '.'],
                     ['Oh!', 'I', would, like, to, hear, more, about, X, '.'],
                     ['This', X, sound, important, to, you, '.']])
-        :- downcase_atom(X,Y), important(Y).
+        :- important(X).
 pattern([yes], [['Who', 'is', 'it', '?']])
         :- state('family').                                        % response only this way, when in family state
 pattern([yes], [['When', 'exactly', 'do', 'you', 'feel', 'that', 'way','?']])
