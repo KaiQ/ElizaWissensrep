@@ -1,5 +1,3 @@
-% From The Art of Prolog 2nd Ed. (Sterling & Shapiro) P.158
-
 % library to be able to read commanline input
 :- use_module(library(readln)).
 
@@ -7,12 +5,12 @@
 % 1. remove unneccessary punctuations
     % recursion end
 strip_punctuation([], []).
-  
+
   % if the current word is not any of the special chars, recurse and prepend this word to the result of the recursion
 strip_punctuation([Word|Tail], [Word|Result]) :-
   \+(member(Word, ['.', ',', '?', '!', '\n'])),
   strip_punctuation(Tail, Result).
-  
+
   % otherwise, if the word is a special char, we do not care about it (hence _) and recurse
 strip_punctuation([_|Tail], Result) :-
   strip_punctuation(Tail, Result).
@@ -24,7 +22,7 @@ strip_punctuation([_|Tail], Result) :-
 %			  P      : the input up to the first newline-char OR upt to one of the chars specified in Arg1
 %             LastCh : the ASCII-code of the last character read
 %             Arg1   : List of stop characters, everything afterwards will not be added to Input1, if not provided '\n' will be used as stop-char
-%			  Arg2   : List of word_part characters (those characters belong to a word and do not form a word itself, 
+%			  Arg2   : List of word_part characters (those characters belong to a word and do not form a word itself,
 %                       e.g. Input: "Hallo1234" -> with Arg2 being set to  "0123456789" we will get [Hallo1234]
 %                                               -> with Arg2 not being set we will get [Hallo, 1234]
 %  		      Arg3   : uppercase / lowercase conversion
@@ -37,6 +35,11 @@ read_sentence(Input) :-
 %   - see underscore('_') and numbers 0-9 as part of words
 %   - make lowercase
 
+
+% print a list of words seperated by whitespaces
+reply([Head|Tail]) :- write(Head), write(' '), reply(Tail).
+reply([]) :- nl.
+
 random_response(R, RL) :- length(RL, Len), X is random(Len), nth0(X, RL, R).
 
 % 3. eliza
@@ -44,7 +47,7 @@ random_response(R, RL) :- length(RL, Len), X is random(Len), nth0(X, RL, R).
 eliza :- init_state, read_sentence(Input), eliza_main(Input), !.
 
     % recusion end, exit eliza
-eliza_main([X]) :- poweroff(X), reply(['Goodbye. I hope I have helped you.']).
+eliza_main([X]) :- downcase_atom(X, Y), poweroff(Y), reply(['Goodbye. I hope I have helped you.']).
 
 % recursive function: read input -> choose Stimulus / Response pair, and recurse until 'bye.' is read
     %TODO mehr schluss woerter
@@ -54,10 +57,10 @@ eliza_main(Input) :-
   pattern(Stimulus, ResponseList),              % choose a certain stimulus and its according response-list
   match(Stimulus, Dictionary, Input),           % find the Stimulus that matches the input, we do not simply copy as we have to identify 'slots' and remember them in the dictionary
   !,                                            % do not look for any other stimuli when found one
-  random_response(Response, ResponseList),      % choose one of the Responses from the ResponseList      
+  random_response(Response, ResponseList),      % choose one of the Responses from the ResponseList
   match(Response, Dictionary, Output),          % write the according Response to Output, 'slots' will be replaced be tokens from the dictionary
   reply(Output),                                % write the determined answer to the terminal
-  state_transition(Output), 
+  state_transition(Output),
   read_sentence(Input1),                        % read a new input and recurse
   eliza_main(Input1).
 
@@ -67,7 +70,7 @@ match([N|Pattern], Dictionary, Target) :-
   append(LeftTarget, RightTarget, Target),              % we use append here to determine the remainig words after LeftTarget in Target. e.g. append([1],X,[1,2,3]). --> X = [2, 3].
   match(Pattern, Dictionary, RightTarget).              % go on with the (possibly) enlarged Dictionary and the remaing part of the Target
 
-% if the next word is an atom, we prepand this word to the output and proceed    
+% if the next word is an atom, we prepand this word to the output and proceed
 match([Word|Pattern], Dictionary, [Word|Target]) :-
   atom(Word), match(Pattern, Dictionary, Target).       % atom(X) will be true if X is an Atom
 
@@ -78,17 +81,12 @@ match([Word|Pattern], Dictionary, [Word|Target]) :-
 % we use the incomplete list to perform value-lookups and insertion of Key-Value-pairs
 % recursion end - with two functionalities:
 %   a) if the Key is inside the dictionary we perform a lookup here and return its associated value
-%   b) if the Key is unknown, we save the new Key-Value-pair in the dictionary   
+%   b) if the Key is unknown, we save the new Key-Value-pair in the dictionary
 lookup(Key, [(Key, Value)|_], Value).
 
 % basically we traverse the dictionary here and check the Key ('key1') of each Key-Value pair against the provided key
 lookup(Key, [(Key1, _)|Dictionary], Value) :-
   \=(Key, Key1), lookup(Key, Dictionary, Value).
-
-add_memory(X, Predicate, Y) :-
-  %print(X), nl, print(Predicate), nl, print(Y),
-  Fact =.. [Predicate, X, Y],                       % runtime evaluation: converts [Predicate, X, Y] into a rule: rule(X,Y) with 'rule' being the content of PRedicate
-  asserta(Fact).                                    % save fact to the current knowledge-base            
 
 % we simulate a state machine here by dynamically adding/replacing a state-predicate and its associated information
 reset_state :-
@@ -110,26 +108,37 @@ init_state :-
 % Note: we cannot do the state-transitions within the pattern-clauses, as all of them will be executed everytime
 %       we'd change states all the time...
 state_transition(Response) :-
-    (subset(['Does', anyone, else, in, your, family, like], Response), family_state); 
-    (subset(['Do', 'you', 'often', 'feel', 'that', 'way','?'],Response), feelings_state); 
-    (subset(['Who', 'is', 'it', '?'],Response), reset_state); 
-    (subset(['When', 'exactly', 'do', 'you', 'feel', 'that', 'way','?'],Response), reset_state); 
+    (subset(['Does', anyone, else, in, your, family, like], Response), family_state);
+    (subset(['Do', 'you', 'often', 'feel', 'that', 'way','?'],Response), feelings_state);
+    (subset(['Who', 'is', 'it', '?'],Response), reset_state);
+    (subset(['When', 'exactly', 'do', 'you', 'feel', 'that', 'way','?'],Response), reset_state);
     true.   % do always return true so we do not disturb the program flow
 
 % all the stimulus<->response pairs: pattern(Stimulus,Response). Integers indicate free slots.
 % as Variables always start with a capital letter we have to explicitely define capital words as string literals.
-pattern([i, am, 1], [['How', long, have, you, been, 1, '?'], ['Test', satz, mit, 1, '!']]).
-pattern([1, you, 2, me], [['What', makes, you, think, 'I', 2, you, '?']]).
-pattern([i, like, 1], [['Does', anyone, else, in, your, family, like, 1, '?']]).
-pattern([i, feel, 1], [['Do', you, often, feel, that, way, '?']]).
-pattern([1, X, 2], [['Please', tell, me, more, about, X, '.']]) :- important(X).
-pattern([yes], [['Who', 'is', 'it', '?']]) :- state(X), X=='family'.                                        % response only this way, when in family state
-pattern([yes], [['When', 'exactly', 'do', 'you', 'feel', 'that', 'way','?']]) :- state(X), X=='feelings'.   % response only this way, when in feelings state
-pattern([1], [['Please', go, on, '.'], ['weiter', 'bitte']]) :- reset_state.    % reset the state if any unkown answer occurs (a kind of fallback...)
-%pattern([remember, X, Predicate, Y], [['I', will, remember, that, '.']]) :-
-% add_memory(X, Predicate, Y).
-%pattern([X, be], [['Is', that, because, X, be, Y, '?']]) :-
-%  call(be, X, Y).
+pattern([i, am, 1], [['How', long, have, you, been, 1, '?'],
+                     ['Do', you, like, it, to, be,  1, '?'],
+                     ['Are', you, 1, right, now, '?']]).
+pattern([1, you, 2, me], [['What', makes, you, think, 'I', 2, you, '?'],
+                          ['Would', you, feel, better, if, 'I', 2, you, '?'],
+                          ['What', if, 'I', say, ',', that, 'I', do, not, 2, you, '?']]).
+pattern([i, like, 1], [['Does', anyone, else, in, your, family, like, 1, '?'],
+                       ['What', does, '"', 1, '"', mean, to, you, '?'],
+                       ['I', like, 1, too, '.']]).
+pattern([i, feel, 1], [['Do', you, often, feel, that, way, '?'],
+                       ['Do', you, feel, 1, right, now, '?'],
+                       ['What', makes, you, feel, 1, '?']]).
+pattern([1, X, 2], [['Please', tell, me, more, about, X, '.'],
+                    ['Oh!', 'I', would, like, to, hear, more, about, X, '.'],
+                    ['This', X, sound, important, to, you, '.']])
+        :- downcase_atom(X,Y), important(Y).
+pattern([yes], [['Who', 'is', 'it', '?']])
+        :- state('family').                                        % response only this way, when in family state
+pattern([yes], [['When', 'exactly', 'do', 'you', 'feel', 'that', 'way','?']])
+        :- state('feelings').   % response only this way, when in feelings state
+pattern([1], [['Please', go, on, '.'],
+              ['Tell', me, more, '.']])
+        :- reset_state.    % reset the state if any unkown answer occurs (a kind of fallback...)
 
 % keywords to react to
 important(father).
@@ -138,12 +147,14 @@ important(sister).
 important(brother).
 important(son).
 important(daughter).
+important(friend).
+important(dog).
+important(cat).
+important(pet).
 
 poweroff(bye).
 poweroff(cu).
 poweroff(tschau).
+poweroff(goodbye).
 
-% print a list of words seperated by whitespaces
-reply([Head|Tail]) :- write(Head), write(' '), reply(Tail).
-reply([]) :- nl.
 
